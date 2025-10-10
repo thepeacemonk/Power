@@ -1,0 +1,10 @@
+{
+    "layout": "layout1",
+    "theme": "auto",
+    "layout1_light_fg": "#02FF68",
+    "layout1_dark_fg": "#02FF68",
+    "layout2_light_fg": "#a855f7",
+    "layout2_dark_fg": "#c084fc",
+    "layout3_light_fg": "#22c55e",
+    "layout3_dark_fg": "#4ade80"
+}
