@@ -14,4 +14,6 @@ This app uses [psutil](https://psutil.readthedocs.io/en/latest/), Copyright (c) 
 
 
 ## Preview
+<h3 align="center">
 <img width="80%" height="auto" alt="preview" src="https://github.com/user-attachments/assets/b09413e1-63e8-4f48-bcbc-e89ad95da0c6" />
+</h3> 
