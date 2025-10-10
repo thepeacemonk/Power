@@ -14,4 +14,4 @@ This app uses [psutil](https://psutil.readthedocs.io/en/latest/), Copyright (c) 
 
 
 ## Preview
-<img width="80%" height="auto" alt="Onigiri (1)" src="https://github.com/user-attachments/assets/0f4f2e22-917e-4743-97e8-045757f9dd4e" />
+<img width="80%" height="auto" alt="preview" src="https://github.com/user-attachments/assets/b09413e1-63e8-4f48-bcbc-e89ad95da0c6" />
