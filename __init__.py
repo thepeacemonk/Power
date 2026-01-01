@@ -1,17 +1,78 @@
-# __init__.py
-# This is the main entry point for the Anki add-on.
-
 import sys
 import os
-sys.path.insert(0, os.path.dirname(__file__))
 
-import psutil
+
+# Define the addon's root folder
+ADDON_FOLDER = os.path.dirname(__file__)
+
+# Determine platform-specific lib folder
+base_lib_folder = os.path.join(ADDON_FOLDER, "lib")
+plat_folder = None
+target_lib = None
+
+if sys.platform.startswith("win32"):
+    if sys.maxsize > 2**32:
+        plat_folder = "win64"
+    else:
+        plat_folder = "win32"
+elif sys.platform.startswith("darwin"):
+    plat_folder = "macos"
+elif sys.platform.startswith("linux"):
+    plat_folder = "linux"
+
+# Add platform-specific lib folder to sys.path FIRST (before addon folder)
+# This ensures external dependencies like psutil are found before any local modules
+if plat_folder:
+    target_lib = os.path.join(base_lib_folder, plat_folder)
+    if target_lib not in sys.path:
+        sys.path.insert(0, target_lib)
+
+# Fallback: add base lib folder
+if base_lib_folder not in sys.path:
+    sys.path.insert(0, base_lib_folder)
+
+
+# Import Anki's modules first to ensure gui_hooks is defined if an error occurs later
 from aqt import mw, gui_hooks
 from aqt.theme import theme_manager
 from aqt.qt import QAction
 from .settings import SettingsDialog
+from aqt.utils import showWarning, tooltip # Import tooltip for more subtle feedback
 
-ADDON_FOLDER = os.path.dirname(__file__)
+# Now attempt to import psutil
+psutil_available = False
+try:
+    import psutil
+    psutil_available = True
+except ImportError as e:
+    # If psutil fails to import, disable the add-on's core functionality
+    # and inform the user.
+    showWarning(f"The 'Power - Check your battery' add-on requires the 'psutil' library.\n"
+                f"Please ensure it is installed correctly in the add-on's 'lib' folder "
+                f"(e.g., using 'pip install psutil -t {target_lib}').\n"
+                f"Error: {e}\n\n"
+                f"This add-on's battery display functionality will be disabled.")
+    
+    # Define a dummy function to replace add_battery_widget
+    def dummy_add_battery_widget(*args, **kwargs):
+        pass # Do nothing
+    
+    # Append the dummy function instead of the original
+    gui_hooks.deck_browser_will_render_content.append(dummy_add_battery_widget)
+
+    # Also disable the settings menu item
+    def dummy_open_settings():
+        showWarning("Power Settings are unavailable because 'psutil' failed to load.")
+    
+    action = QAction("Power Settings (Unavailable)", mw)
+    action.triggered.connect(dummy_open_settings)
+    mw.form.menuTools.addAction(action)
+
+    # The psutil import failed, so we've set up fallback dummies.
+    # We allow the rest of the script to execute (defining functions), but we will skip
+    # the final registration of the "real" features based on the psutil_available flag.
+
+# --- If psutil import was successful, continue with normal add-on setup ---
 
 def hex_to_rgba(hex_color, opacity_percent):
     """Converts a hex color string to an rgba string."""
@@ -294,8 +355,11 @@ def open_settings():
     dialog = SettingsDialog(mw, addon_package=__name__)
     dialog.exec()
 
-action = QAction("Power Settings...", mw)
-action.triggered.connect(open_settings)
-mw.form.menuTools.addAction(action)
+# Ensure these are only created if psutil successfully loaded
+# If psutil failed, dummy functions and action were already set up.
+if psutil_available:
+    action = QAction("Power Settings", mw)
+    action.triggered.connect(open_settings)
+    mw.form.menuTools.addAction(action)
 
-gui_hooks.deck_browser_will_render_content.append(add_battery_widget)
+    gui_hooks.deck_browser_will_render_content.append(add_battery_widget)

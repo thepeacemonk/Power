@@ -85,8 +85,14 @@ class SettingsDialog(QDialog):
     def __init__(self, parent=None, addon_package=""):
         super().__init__(parent)
         self.setWindowTitle("Power Settings")
-        self.setFixedWidth(450)
-        self.resize(450, 650) # Set a default size
+        
+        # Make dialog responsive to screen size
+        from aqt.qt import QApplication
+        screen = QApplication.primaryScreen().availableGeometry()
+        # Set initial size to 450x650 but allow resizing
+        self.resize(450, min(650, int(screen.height() * 0.8)))
+        self.setMinimumWidth(400)
+        self.setMinimumHeight(400)
 
         # Load current config, providing a default if it's missing
         self.addon_package = addon_package
@@ -95,10 +101,13 @@ class SettingsDialog(QDialog):
         # --- Scroll Area Setup ---
         dialog_layout = QVBoxLayout(self)
         dialog_layout.setContentsMargins(0, 0, 0, 0)
+        dialog_layout.setSpacing(0)
 
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setObjectName("ScrollArea")
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         dialog_layout.addWidget(scroll_area)
 
         scroll_content_widget = QWidget()
@@ -244,6 +253,7 @@ class SettingsDialog(QDialog):
         # Opacity Slider
         opacity_layout = QHBoxLayout()
         self.opacity_slider = QSlider(Qt.Orientation.Horizontal)
+        self.opacity_slider.setRange(0, 100)
         self.opacity_spinbox = QSpinBox()
         self.opacity_spinbox.setRange(0, 100)
         self.opacity_spinbox.setSuffix("%")
@@ -258,8 +268,15 @@ class SettingsDialog(QDialog):
         colors_group.setLayout(colors_form_layout)
         main_layout.addWidget(colors_group)
 
-        # --- Dialog Buttons ---
+        # --- Dialog Buttons (Fixed at Bottom) ---
+        # Create a container widget for the buttons with centered layout
+        button_container = QWidget()
+        button_container.setObjectName("ButtonContainer")
+        button_container_layout = QHBoxLayout(button_container)
+        button_container_layout.setContentsMargins(15, 10, 15, 10)
+        
         button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
+        button_box.setObjectName("ButtonBox")
         
         # Get buttons and assign object names for styling
         save_button = button_box.button(QDialogButtonBox.StandardButton.Save)
@@ -269,7 +286,14 @@ class SettingsDialog(QDialog):
 
         button_box.accepted.connect(self.save_settings)
         button_box.rejected.connect(self.reject)
-        main_layout.addWidget(button_box)
+        
+        # Center the button box
+        button_container_layout.addStretch()
+        button_container_layout.addWidget(button_box)
+        button_container_layout.addStretch()
+        
+        # Add button container to dialog layout (outside scroll area)
+        dialog_layout.addWidget(button_container)
 
         # --- Connect Signals ---
         # Connect swatch clicks to open the color dialog
@@ -301,8 +325,14 @@ class SettingsDialog(QDialog):
         
         # Base stylesheet for elements common to both themes
         base_stylesheet = """
-            #ScrollArea { border: none; }
+            #ScrollArea { 
+                border: none; 
+                background: transparent;
+            }
             #HeaderImage { margin-top: 10px; margin-bottom: 10px; }
+            #ButtonContainer {
+                border-top: 1px solid rgba(0, 0, 0, 0.1);
+            }
             QPushButton {
                 padding: 8px 16px;
                 border-radius: 8px;
@@ -313,10 +343,19 @@ class SettingsDialog(QDialog):
                 padding: 4px 8px;
                 font-size: 14px;
             }
-            #DonateButton, #ReportButton, #SaveButton {
+            #DonateButton, #ReportButton {
                 font-weight: bold;
                 border: none;
                 color: white;
+            }
+            #SaveButton {
+                font-weight: bold;
+                border: none;
+                color: white;
+                background-color: #38DC75;
+            }
+            #SaveButton:hover {
+                background-color: #2ec766;
             }
             QGroupBox {
                 border-radius: 8px;
@@ -333,13 +372,19 @@ class SettingsDialog(QDialog):
                 font-size: 14px;
             }
             QSlider::groove:horizontal {
-                height: 6px;
-                border-radius: 3px;
+                height: 8px;
+                border-radius: 4px;
+            }
+            QSlider::sub-page:horizontal {
+                background: #38DC75;
+                border-radius: 4px;
             }
             QSlider::handle:horizontal {
                 width: 16px;
-                margin: -6px 0;
+                height: 16px;
+                margin: -4px 0;
                 border-radius: 8px;
+                border: none;
             }
             QDialogButtonBox QPushButton {
                 min-width: 90px;
@@ -347,6 +392,7 @@ class SettingsDialog(QDialog):
             }
             QScrollBar:vertical {
                 border: none;
+                background: transparent;
                 width: 10px;
                 margin: 0px 0px 0px 0px;
             }
@@ -359,34 +405,34 @@ class SettingsDialog(QDialog):
 
         light_theme_overrides = """
             QDialog { background-color: #f7f7f7; }
+            #ButtonContainer { background-color: #f7f7f7; border-top-color: rgba(0, 0, 0, 0.1); }
             QPushButton { border: 1px solid #dcdcdc; background-color: #fff; }
             QPushButton:hover { background-color: #f0f0f0; }
             QLineEdit#ColorLineEdit { border: 1px solid #dcdcdc; }
             QLineEdit#ColorLineEdit:focus { border-color: #a0a0a0; }
-            #DonateButton, #ReportButton, #SaveButton { background-color: #6b7280; }
-            #DonateButton:hover, #ReportButton:hover, #SaveButton:hover { background-color: #4b5563; }
+            #DonateButton, #ReportButton { background-color: #6b7280; }
+            #DonateButton:hover, #ReportButton:hover { background-color: #4b5563; }
             QGroupBox { border: 1px solid #e5e5e5; }
-            QSlider::groove:horizontal { border: 1px solid #ccc; background: #f0f0f0; }
-            QSlider::handle:horizontal { background: #9ca3af; border: 1px solid #9ca3af; }
-            QScrollBar:vertical { background: #f7f7f7; }
+            QSlider::groove:horizontal { background: #d1d5db; }
+            QSlider::handle:horizontal { background: #2e2e2e; }
             QScrollBar::handle:vertical { background: #dcdcdc; }
             QScrollBar::handle:vertical:hover { background: #c0c0c0; }
         """
 
         dark_theme_overrides = """
             QDialog { background-color: #2e2e2e; color: #e0e0e0; }
+            #ButtonContainer { background-color: #2e2e2e; border-top-color: rgba(255, 255, 255, 0.1); }
             QPushButton { border: 1px solid #4a4a4a; background-color: #3a3a3a; color: #e0e0e0; }
             QPushButton:hover { background-color: #4a4a4a; }
             QLineEdit#ColorLineEdit { border: 1px solid #4a4a4a; background-color: #3a3a3a; color: #e0e0e0; }
             QLineEdit#ColorLineEdit:focus { border-color: #777; }
-            #DonateButton, #ReportButton, #SaveButton { background-color: #555; }
-            #DonateButton:hover, #ReportButton:hover, #SaveButton:hover { background-color: #666; }
+            #DonateButton, #ReportButton { background-color: #555; }
+            #DonateButton:hover, #ReportButton:hover { background-color: #666; }
             QGroupBox { border: 1px solid #4a4a4a; color: #e0e0e0; }
             QGroupBox::title { color: #e0e0e0; }
             QRadioButton, QLabel, QSpinBox { color: #e0e0e0; }
-            QSlider::groove:horizontal { border: 1px solid #4a4a4a; background: #2e2e2e; }
-            QSlider::handle:horizontal { background: #6b7280; border: 1px solid #6b7280; }
-            QScrollBar:vertical { background: #2e2e2e; }
+            QSlider::groove:horizontal { background: #4a4a4a; }
+            QSlider::handle:horizontal { background: #ffffff; }
             QScrollBar::handle:vertical { background: #4a4a4a; }
             QScrollBar::handle:vertical:hover { background: #5a5a5a; }
         """
