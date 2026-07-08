@@ -2,10 +2,6 @@
   <img src="https://raw.githubusercontent.com/thepeacemonk/Power/main/icons/Power_logo.svg" alt="Power logo"/>
 </p>
 
-  <br>
-	Power
-</h3> 
-
 <hr> 
 <h4 align="center">
 Power is a widget that displays your current battery on Anki's main menu. Very simple, very straightforward. 
