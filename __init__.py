@@ -35,9 +35,9 @@ if base_lib_folder not in sys.path:
 # Import Anki's modules first to ensure gui_hooks is defined if an error occurs later
 from aqt import mw, gui_hooks
 from aqt.theme import theme_manager
-from aqt.qt import QAction
 from .settings import SettingsDialog
 from aqt.utils import showWarning, tooltip # Import tooltip for more subtle feedback
+from . import bento_integration
 
 # Now attempt to import psutil
 psutil_available = False
@@ -64,9 +64,7 @@ except ImportError as e:
     def dummy_open_settings():
         showWarning("Power Settings are unavailable because 'psutil' failed to load.")
     
-    action = QAction("Power Settings (Unavailable)", mw)
-    action.triggered.connect(dummy_open_settings)
-    mw.form.menuTools.addAction(action)
+    bento_integration.add_menu_action("Power Settings (Unavailable)", dummy_open_settings)
 
     # The psutil import failed, so we've set up fallback dummies.
     # We allow the rest of the script to execute (defining functions), but we will skip
@@ -146,19 +144,41 @@ def get_battery_info():
         "icon_name": icon_name
     }
 
-def add_battery_widget(deck_browser, content):
-    """Adds the battery widget HTML to the bottom of the deck browser."""
-    config = mw.addonManager.getConfig(__name__) or {}
-    battery_info = get_battery_info()
+def get_preview_battery_info(charging=False):
+    """Returns static, fabricated battery data for use in the settings preview.
 
-    if not battery_info:
-        return
+    This intentionally never touches psutil/real hardware state, so the
+    preview always has something sensible to show even if the real battery
+    can't be read (or on a desktop with no battery at all).
+    """
+    if charging:
+        return {
+            "percent": 76,
+            "charging": True,
+            "status_text": "Charging",
+            "time_left_long": "0.6 hours for full charge",
+            "time_left_charging": "• 34 min left",
+            "is_fully_charged": False,
+            "icon_name": "battery_bolt",
+        }
+    return {
+        "percent": 76,
+        "charging": False,
+        "status_text": "On Battery",
+        "time_left_long": "~5.2 hours left",
+        "time_left_charging": "",
+        "is_fully_charged": False,
+        "icon_name": "battery",
+    }
 
+
+def generate_battery_html(config, battery_info, is_dark_mode):
+    """Builds the widget's inner HTML (with its own <style> block) for the
+    given config/battery data/theme. Used both by the real deck-browser
+    render and by the settings-dialog live preview, so the two can never
+    visually drift apart.
+    """
     icon_svg = load_icon(battery_info["icon_name"])
-
-    is_dark_mode = theme_manager.night_mode
-    if config.get("theme") == "light": is_dark_mode = False
-    elif config.get("theme") == "dark": is_dark_mode = True
 
     # Get background settings
     opacity = config.get("bg_opacity", 100)
@@ -171,7 +191,7 @@ def add_battery_widget(deck_browser, content):
 
     widget_html = ""
     layout = config.get("layout", "layout1")
-    
+
     shared_styles = f"""
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         .b-widget-container {{
@@ -196,7 +216,8 @@ def add_battery_widget(deck_browser, content):
             vertical-align: middle;
         }}
     """
-    
+    shared_styles += bento_integration.sizing_css(".b-widget-container", ".b-widget-container", config)
+
     if layout == "layout1":
         bar_color = config.get("layout1_dark_fg", "#02FF68") if is_dark_mode else config.get("layout1_light_fg", "#02FF68")
         text_color = "#FFFFFF" if is_dark_mode else "#000000"
@@ -275,7 +296,7 @@ def add_battery_widget(deck_browser, content):
     elif layout == "layout2":
         bar_color = config.get("layout2_dark_fg", "#c084fc") if is_dark_mode else config.get("layout2_light_fg", "#a855f7")
         bar_bg_color = "rgba(255, 255, 255, 0.1)" if is_dark_mode else "rgba(0, 0, 0, 0.1)"
-        
+
         percent = battery_info['percent']
         segments_html = ""
         for i in range(5):
@@ -309,12 +330,12 @@ def add_battery_widget(deck_browser, content):
         bar_color = config.get("layout3_dark_fg", "#4ade80") if is_dark_mode else config.get("layout3_light_fg", "#22c55e")
         bar_bg_color = "rgba(255, 255, 255, 0.1)" if is_dark_mode else "rgba(0, 0, 0, 0.1)"
         subtle_text_color = '#9ca3af' if is_dark_mode else '#6b7280'
-        
+
         widget_html = f"""
         <style>
             {shared_styles}
-            #bw-l3 {{ 
-                justify-content: space-around; 
+            #bw-l3 {{
+                justify-content: space-around;
             }}
             .bw-l3-header {{
                 font-size: 16px; font-weight: 600; color: {subtle_text_color};
@@ -348,8 +369,38 @@ def add_battery_widget(deck_browser, content):
         </div>
         """
 
-    content.stats += widget_html
+    return widget_html
 
+
+def add_battery_widget(deck_browser, content):
+    """Adds the battery widget HTML to the bottom of the deck browser."""
+    config = mw.addonManager.getConfig(__name__) or {}
+    battery_info = get_battery_info()
+
+    if not battery_info:
+        return
+
+    is_dark_mode = theme_manager.night_mode
+    if config.get("theme") == "light": is_dark_mode = False
+    elif config.get("theme") == "dark": is_dark_mode = True
+
+    content.stats += generate_battery_html(config, battery_info, is_dark_mode)
+
+
+_is_settings_open = False
+def debounce_settings(func):
+    def wrapper(*args, **kwargs):
+        global _is_settings_open
+        if _is_settings_open:
+            return
+        _is_settings_open = True
+        try:
+            return func()
+        finally:
+            _is_settings_open = False
+    return wrapper
+
+@debounce_settings
 def open_settings():
     """Opens the settings dialog."""
     dialog = SettingsDialog(mw, addon_package=__name__)
@@ -358,8 +409,7 @@ def open_settings():
 # Ensure these are only created if psutil successfully loaded
 # If psutil failed, dummy functions and action were already set up.
 if psutil_available:
-    action = QAction("Power Settings", mw)
-    action.triggered.connect(open_settings)
-    mw.form.menuTools.addAction(action)
+    bento_integration.register_widget("Power", settings_callback=open_settings)
+    bento_integration.add_menu_action("Power Settings", open_settings)
 
     gui_hooks.deck_browser_will_render_content.append(add_battery_widget)
