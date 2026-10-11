@@ -1,27 +1,23 @@
-<h3 align="center">
-  <img width="360" height="112" alt="Power" src="https://github.com/user-attachments/assets/2a35dd05-f740-41c3-887e-8ae2b43b13ce" />
-  <br>
-	Power
-</h3> 
+<p align="center">
+  <img src=".github/power_slide.svg" alt="Onigiri header" width="100%">
+</p>
 
-<hr> 
-<h4 align="center">
-Power is a widget that displays your current battery on Anki's main menu. Very simple, very straightforward. 
-</h4>
+### License
 
-## Support my work
+This project is licensed under the `GNU Affero General Public License v3.0 (AGPL-3.0)`. In short: you’re free to use, study, and modify this code—but if you run it as a service or distribute modified versions, you must make your source available under the same license.
+
+I’ve put a lot of time into designing and maintaining this work. Please respect the license and my effort:
+- Don’t copy parts of this project into closed-source or commercial products.
+- If you build on it, credit the original and keep your changes open.
+- If you find value here, consider contributing back or supporting the project.
+
+
+### Support my work
 
 I’m actively shipping updates and new features. If my add-ons helped your studies or workflow, consider supporting my work. Your contribution keeps the project maintained and free for everyone.
 
+<p align="center">
 <a href="https://www.buymeacoffee.com/peacemonk">
-	<img width="30%" height="auto" alt="Power" src="https://github.com/user-attachments/assets/cb01da73-4a83-4a3c-b827-3b31853bb78f" />
+  <img src=".github/donation_button.svg" alt="Hours donation button" width="50%">
 </a>
-
-## Credits 
-This app uses [psutil](https://psutil.readthedocs.io/en/latest/), Copyright (c) 2009, Jay Loden, Dave Daeschler, Giampaolo Rodola. Licensed under the BSD 3-Clause License.
-
-
-## Preview
-<h3 align="center">
-<img width="80%" height="auto" alt="preview" src="https://github.com/user-attachments/assets/b09413e1-63e8-4f48-bcbc-e89ad95da0c6" />
-</h3> 
+</p>
